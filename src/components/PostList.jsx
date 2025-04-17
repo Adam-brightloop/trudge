@@ -3,7 +3,8 @@ import Post from './Post';
 import NewPost from './NewPost'; // Import the Post component
 import Modal from './Modal'; // Import the Modal component
 import classes from './PostList.module.css'; // Import the CSS module for styling
-function PostList(){
+
+function PostList({isPosting, onStopPosting}) {
     const [modalIsVisible, setModalIsVisible] = useState(true); // Initialize state to hold posts' body text
     const [enteredBody, setEnteredBody] = useState(''); // Initialize state to hold body text
     const [enteredAuthor, setEnteredAuthor] = useState(''); // Initialize state to hold author text
@@ -22,11 +23,11 @@ function PostList(){
 
     return (
         <>
-            {modalIsVisible ? (
-                <Modal onClose={hideModalHandler}>
+            {isPosting && (
+                <Modal onClose={onStopPosting}>
                     <NewPost onBodyChange={bodyChangeHandler} onAuthorChange={authorChangeHandler}/>    
                 </Modal>
-            ) : false}
+            )}
                         
             <ul className={classes.posts}>
             <Post author="Adam" body="Master Web Engineer" />
