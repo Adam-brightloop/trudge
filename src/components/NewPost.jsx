@@ -1,27 +1,37 @@
-//import { useState } from 'react';
+import { useState } from 'react';
 import classes from './NewPost.module.css';
 
-function NewPost({onBodyChange, onAuthorChange, onCancel}) {
-  /*const stateData = useState('');
-  stateData[0];  This is the state variable that holds the value of the text area input field.
-  stateData[1];  This is the function to update the state variable.   
-  let enteredBody = '';
-  const [enteredBody, setEnteredBody] = useState(''); // Using array destructuring to get the state variable and the function to update it.
+function NewPost({onCancel}) {
+  const [enteredBody, setEnteredBody] = useState(''); // Initialize state to hold body text
+  const [enteredAuthor, setEnteredAuthor] = useState(''); // Initialize state to hold author text
+       
+  function bodyChangeHandler(event) {
+    setEnteredBody(event.target.value); // Update the body variable with the new value from the text area input field.
+  }
     
-  // This function handles the change event for the text area input field.    
-  function changeBodyHandler(event) {
-    setEnteredBody(event.target.value); // Update the state variable with the new value from the text area input field.
-  }*/
+  function authorChangeHandler(event) {
+    setEnteredAuthor(event.target.value); // Update the author variable with the new value from the text area input field.
+  }
+
+  function submitHandler(event) { 
+    event.preventDefault(); // Prevent the default form submission behavior
+    const postData = {
+      body: enteredBody,
+      author: enteredAuthor
+    };
+    console.log(postData); // Log the post data to the console (for debugging purposes)
+    onCancel(); // Call the onCancel function to close the modal after submission
+  }
 
   return (
-    <form className={classes.form}>
+    <form className={classes.form} onSubmit={submitHandler}>
       <p>
         <label htmlFor="body">Text</label>
-        <textarea id="body" required rows={3} onChange={onBodyChange}/>
+        <textarea id="body" required rows={3} onChange={bodyChangeHandler}/>
       </p>
       <p>
         <label htmlFor="name">Your name</label>
-        <input type="text" id="name" required onChange={onAuthorChange}/>
+        <input type="text" id="name" required onChange={authorChangeHandler}/>
       </p>
       <p className={classes.actions}>
         <button type="submit" className={classes.submit}>Add Post</button>
