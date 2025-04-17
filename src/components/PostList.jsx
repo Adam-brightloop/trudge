@@ -4,8 +4,14 @@ import NewPost from './NewPost'; // Import the Post component
 import Modal from './Modal'; // Import the Modal component
 import classes from './PostList.module.css'; // Import the CSS module for styling
 function PostList(){
-    const [enteredBody, setEnteredBody] = useState(''); // Initialize state to hold posts'
-    const [enteredAuthor, setEnteredAuthor] = useState(''); // Initialize state to hold posts' body text
+    const [modalIsVisible, setModalIsVisible] = useState(true); // Initialize state to hold posts' body text
+    const [enteredBody, setEnteredBody] = useState(''); // Initialize state to hold body text
+    const [enteredAuthor, setEnteredAuthor] = useState(''); // Initialize state to hold author text
+
+    function hideModalHandler() {
+        setModalIsVisible(false); // Hide the modal when the button is clicked
+    }
+
     function bodyChangeHandler(event) {
         setEnteredBody(event.target.value); // Update the body variable with the new value from the text area input field.
     }
@@ -16,9 +22,12 @@ function PostList(){
 
     return (
         <>
-            <Modal>
-              <NewPost onBodyChange={bodyChangeHandler} onAuthorChange={authorChangeHandler}/>    
-            </Modal>            
+            {modalIsVisible ? (
+                <Modal onClose={hideModalHandler}>
+                    <NewPost onBodyChange={bodyChangeHandler} onAuthorChange={authorChangeHandler}/>    
+                </Modal>
+            ) : false}
+                        
             <ul className={classes.posts}>
             <Post author="Adam" body="Master Web Engineer" />
             <Post author={enteredAuthor} body={enteredBody} />
