@@ -1,6 +1,7 @@
 import{ useState } from 'react'; // Import useState from React
 import Post from './Post';
 import NewPost from './NewPost'; // Import the Post component
+import Modal from './Modal'; // Import the Modal component
 import classes from './PostList.module.css'; // Import the CSS module for styling
 function PostList(){
     const [enteredBody, setEnteredBody] = useState(''); // Initialize state to hold posts'
@@ -15,7 +16,9 @@ function PostList(){
 
     return (
         <>
-            <NewPost onBodyChange={bodyChangeHandler} onAuthorChange={authorChangeHandler}/>
+            <Modal>
+              <NewPost onBodyChange={bodyChangeHandler} onAuthorChange={authorChangeHandler}/>    
+            </Modal>            
             <ul className={classes.posts}>
             <Post author="Adam" body="Master Web Engineer" />
             <Post author={enteredAuthor} body={enteredBody} />
