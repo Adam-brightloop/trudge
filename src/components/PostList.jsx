@@ -1,14 +1,32 @@
-import{ useState } from 'react'; // Import useState from React
+import{ useState, useEffect } from 'react'; // Import useState from React
 import Post from './Post';
 import NewPost from './NewPost'; // Import the Post component
 import Modal from './Modal'; // Import the Modal component
 import classes from './PostList.module.css'; // Import the CSS module for styling
 
 function PostList({isPosting, onStopPosting}) {
+    
     const [posts, setPosts] = useState([]); // 
+
+    useEffect(() => { // useEffect to fetch posts when the component mounts
+      async function fetchPosts() { // Define an async function to fetch posts
+        const response = await fetch('http://localhost:8080/posts'); // Fetch posts from the server
+        const data = await response.json(); // Parse the response as JSON
+        setPosts(data.posts); // Update the posts state with the fetched data
+      } 
+
+      fetchPosts(); // Call the fetchPosts function to get posts
+    }, []); // Fetch posts from the server 
     
     function addPostHandler(postData) { 
-        setPosts((existingPosts) => [postData, ...existingPosts]); // Update the posts state with the new post data
+      fetch('http://localhost:8080/posts', {
+        method: 'POST', // Specify the HTTP method
+        body: JSON.stringify(postData), // Convert the post data to a JSON string
+        headers: {
+          'Content-Type': 'application/json', // Set the content type to JSON
+        }
+      }); // Send a POST request to the server)
+      setPosts((existingPosts) => [postData, ...existingPosts]); // Update the posts state with the new post data
     }
 
     return (
