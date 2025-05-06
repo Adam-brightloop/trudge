@@ -6,13 +6,19 @@ import classes from './PostList.module.css'; // Import the CSS module for stylin
 
 function PostList({isPosting, onStopPosting}) {
     
-    const [posts, setPosts] = useState([]); // 
+    const [posts, setPosts] = useState([]); 
+    const [isLoading, setIsLoading] = useState(false); // State to manage loading status 
 
     useEffect(() => { // useEffect to fetch posts when the component mounts
       async function fetchPosts() { // Define an async function to fetch posts
+        setIsLoading(true); // Set loading state to true
         const response = await fetch('http://localhost:8080/posts'); // Fetch posts from the server
         const data = await response.json(); // Parse the response as JSON
         setPosts(data.posts); // Update the posts state with the fetched data
+        setIsLoading(false); // Set loading state to false
+        if (!response.ok) { // Check if the response is not OK
+          throw new Error('Could not fetch posts!'); // Throw an error if the response is not OK
+        }
       } 
 
       fetchPosts(); // Call the fetchPosts function to get posts
@@ -36,17 +42,27 @@ function PostList({isPosting, onStopPosting}) {
             <NewPost onCancel={onStopPosting} onAddPost={addPostHandler} />    
           </Modal>
         )} 
-        {posts.length > 0 && (           
+        {!isLoading && posts.length > 0 && (           
             <ul className={classes.posts}>
             {posts.map((post, index) => (
                 <Post key={index} body={post.body} author={post.author} /> // Render each post using the Post component
             ))}
             </ul>
         )}
-        {posts.length === 0 && (
+        {!isLoading && posts.length === 0 && (
             <div style={{textAlign: 'center', color: 'white'}}>
                 <h1>Welcome to the Post App!</h1>
                 <h2>No posts found. Start adding some!</h2>
+            </div>
+        )}
+        {isLoading && (
+            <div style={{textAlign: 'center', color: 'white'}}>
+                <h1>Loading...</h1>
+            </div>
+        )}
+        {posts.length > 0 && !isLoading && (
+            <div style={{textAlign: 'center', color: 'white'}}>
+                <h2>Posts found: {posts.length}</h2>
             </div>
         )}
       </>        
