@@ -1,103 +1,290 @@
-import Image from "next/image";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import players from '@/data/players.json';
+import supabase from '@/lib/supabase';
 
-export default function Home() {
+async function getLeagueData() {
+  const res = await fetch('http://localhost:3000/api/league', {
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error('Failed to fetch league data');
+  return res.json();
+}
+
+async function getRosters() {
+  const res = await fetch('http://localhost:3000/api/rosters', {
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error('Failed to fetch rosters');
+  return res.json();
+}
+
+async function getUsers() {
+  const res = await fetch('http://localhost:3000/api/users', {
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error('Failed to fetch users');
+  return res.json();
+}
+
+async function getLeaguesBySeason(season) {
+  const res = await fetch(`http://localhost:3000/api/leagues/${season}`, {
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch leagues for ${season}`);
+  return res.json();
+}
+
+async function getUserInfo(userIds) {
+  const { data, error } = await supabase
+    .from('user_info')
+    .select('*')
+    .in('user_id', userIds);
+  if (error) {
+    console.error('Error fetching user info:', error.message);
+    return [];
+  }
+  return data;
+}
+
+// Define position order for sorting
+const positionOrder = { QB: 1, RB: 2, WR: 3, TE: 4, DEF: 5, K: 6 };
+
+export default async function Home() {
+  const seasons = ['2025', '2024', '2023'];
+  let league, rosters, users, leaguesBySeason;
+
+  try {
+    [league, rosters, users] = await Promise.all([
+      getLeagueData(),
+      getRosters(),
+      getUsers(),
+    ]);
+
+    leaguesBySeason = await Promise.all(
+      seasons.map(async (season) => {
+        try {
+          const leagues = await getLeaguesBySeason(season);
+          return { season, leagues };
+        } catch (error) {
+          console.error(`Error for season ${season}:`, error.message);
+          return { season, leagues: [] };
+        }
+      })
+    );
+  } catch (error) {
+    console.error('Error fetching data:', error.message);
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <p className="text-red-500">Error: Failed to load data</p>
+      </div>
+    );
+  }
+
+  // Create team name map
+  const teamNameMap = rosters.reduce((acc, roster) => {
+    const user = users.find((u) => u.user_id === roster.owner_id);
+    acc[roster.roster_id] = {
+      team_name: user?.metadata?.team_name || user?.display_name || `Team ${roster.roster_id}`,
+      avatar: user?.avatar ? `https://sleepercdn.com/avatars/${user.avatar}` : null,
+      user_id: user?.user_id,
+      display_name: user?.display_name,
+    };
+    return acc;
+  }, {});
+
+  // Fetch user info from Supabase
+  const userIds = users.map((user) => user.user_id);
+  const userInfo = await getUserInfo(userIds);
+  const userInfoMap = userInfo.reduce((acc, info) => {
+    acc[info.user_id] = info;
+    return acc;
+  }, {});
+
+  // Get available seasons
+  const availableSeasons = leaguesBySeason
+    .filter(({ leagues }) => leagues.length > 0)
+    .map(({ season }) => season)
+    .concat('2025')
+    .filter((value, index, self) => self.indexOf(value) === index)
+    .sort((a, b) => b - a);
+
+  // Log rosters for debugging
+  console.log('Rosters:', JSON.stringify(rosters, null, 2));
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="min-h-screen bg-gray-100">
+      <header className="bg-primary text-neutral py-4">
+        <div className="container mx-auto flex items-center gap-4">
+          <img src="/logo.png" alt="DynastyHub Logo" className="h-10" />
+          <h1 className="text-3xl font-bold">DynastyHub: {league.name}</h1>
         </div>
+      </header>
+      <main className="container mx-auto py-8">
+        <Tabs defaultValue={availableSeasons[0] || '2025'} className="w-full mb-8">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {availableSeasons.map((season) => (
+              <TabsTrigger key={season} value={season}>
+                {season}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {availableSeasons.map((season) => (
+            <TabsContent key={season} value={season}>
+              <div className="space-y-8">
+                {/* League Overview */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>League Overview ({season})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p>Teams: {league.total_rosters}</p>
+                    <p>Season: {league.season}</p>
+                  </CardContent>
+                </Card>
+
+                {/* Rosters */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Rosters</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {rosters.length === 0 ? (
+                      <p>No rosters found</p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {rosters.map((roster) => {
+                          const team = teamNameMap[roster.roster_id];
+                          const info = userInfoMap[team?.user_id] || {};
+                          // Sort players by position
+                          const sortedPlayers = roster.players
+                            .map((playerId) => {
+                              const player = players[String(playerId)];
+                              console.log(`Player ID: ${playerId}, Data:`, player); // Debug
+                              return {
+                                playerId,
+                                full_name: player?.full_name || `Unknown Player (${playerId})`,
+                                position: player?.position || 'N/A',
+                                team: player?.team || 'N/A',
+                                years_exp: player?.years_exp != null ? player.years_exp : 'N/A',
+                              };
+                            })
+                            .sort((a, b) => {
+                              const posA = positionOrder[a.position] || 99;
+                              const posB = positionOrder[b.position] || 99;
+                              return posA - posB;
+                            });
+
+                          // Log sorted players
+                          console.log(`Roster ${roster.roster_id} Players:`, JSON.stringify(sortedPlayers, null, 2));
+
+                          return (
+                            <Card key={roster.roster_id}>
+                              <CardHeader>
+                                <div className="flex items-center gap-4">
+                                  <Avatar>
+                                    <AvatarImage src={team?.avatar} alt={team?.team_name} />
+                                    <AvatarFallback>
+                                      {team?.team_name?.[0] || 'T'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <CardTitle>{team?.team_name}</CardTitle>
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                  Manager: {team?.display_name || 'Unknown'}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  Bio: {info.bio || 'No bio available'}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  Favorite NFL Team: {info.favorite_nfl_team || 'N/A'}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  Contact: {info.contact_preference || 'N/A'}
+                                </p>
+                              </CardHeader>
+                              <CardContent>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Player</TableHead>
+                                      <TableHead>Position</TableHead>
+                                      <TableHead>Team</TableHead>
+                                      <TableHead>Years Exp</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {sortedPlayers.length === 0 ? (
+                                      <TableRow>
+                                        <TableCell colSpan={4}>No players found</TableCell>
+                                      </TableRow>
+                                    ) : (
+                                      sortedPlayers.map(({ playerId, full_name, position, team, years_exp }) => (
+                                        <TableRow key={playerId}>
+                                          <TableCell className="max-w-xs truncate">
+                                            {full_name}
+                                          </TableCell>
+                                          <TableCell>{position}</TableCell>
+                                          <TableCell>{team}</TableCell>
+                                          <TableCell>{years_exp}</TableCell>
+                                        </TableRow>
+                                      ))
+                                    )}
+                                  </TableBody>
+                                </Table>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* League Settings */}
+                {season === '2025' && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>League Settings</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <h3 className="text-lg font-semibold mb-2">General</h3>
+                      <p>Teams: {league.settings?.teams || 'N/A'}</p>
+                      <p>Playoff Teams: {league.settings?.playoff_teams || 'N/A'}</p>
+                      <p>Divisions: {league.settings?.divisions || 'None'}</p>
+
+                      <h3 className="text-lg font-semibold mt-4 mb-2">Roster Positions</h3>
+                      <p>{league.roster_positions?.join(', ') || 'N/A'}</p>
+
+                      <h3 className="text-lg font-semibold mt-4 mb-2">Scoring Settings</h3>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Stat</TableHead>
+                            <TableHead>Points</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {league.scoring_settings
+                            ? Object.entries(league.scoring_settings).map(([stat, points]) => (
+                                <TableRow key={stat}>
+                                  <TableCell>{stat}</TableCell>
+                                  <TableCell>{points}</TableCell>
+                                </TableRow>
+                              ))
+                            : <TableRow><TableCell colSpan={2}>No scoring settings available</TableCell></TableRow>}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+          ))}
+        </Tabs>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
